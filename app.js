@@ -85,7 +85,8 @@ async function loadAll() {
     await loadWishes();
     let pending = null; try { pending = sessionStorage.getItem("pendingAdd"); sessionStorage.removeItem("pendingAdd"); } catch {}
     if (pending && pending.toUpperCase() !== S.profile.code) await addByCode(pending, true);
-    if (S.profile && !S.profile.onboarded) openTour();
+    if (S.profile && !S.profile.onboarded) { seenNews(); openTour(); }
+    else if (!seenNews()) openNews();
   } catch (e) {
     $app.innerHTML = `<div class="auth"><div class="auth-box"><div class="logo">Наши хотелки</div><p class="err">${esc(ruError(e))}</p><button class="btn" id="retry">Попробовать снова</button></div></div>`;
     document.getElementById("retry").onclick = loadAll;
@@ -520,6 +521,7 @@ function openProfile() {
       <div style="display:flex;gap:8px"><input id="pf-name" type="text" maxlength="40" value="${esc(S.profile.name)}"><button class="btn small" type="submit">Сохранить</button></div></form>
     <small style="color:var(--muted)">Почта: ${esc(S.me.email || "")}</small>
     <button class="btn ghost" type="button" id="pf-install">📱 Как поставить на экран телефона</button>
+    <button class="btn ghost" type="button" id="pf-news">✨ Как добавить хотелку по ссылке</button>
     <button class="btn ghost" type="button" id="pf-tour">Показать подсказки</button>
     <button class="btn danger" type="button" id="pf-out">Выйти</button>`);
   sh.querySelector("#pf").onsubmit = async e => {
@@ -531,6 +533,7 @@ function openProfile() {
   };
   sh.querySelector("#pf-tour").onclick = openTour;
   sh.querySelector("#pf-install").onclick = openInstall;
+  sh.querySelector("#pf-news").onclick = openNews;
   sh.querySelector("#pf-out").onclick = async () => { closeSheet(); await sb.auth.signOut(); };
 }
 
@@ -562,10 +565,27 @@ function openInstall() {
     ${ios ? iphone + android : android + iphone}
     <div class="actions"><button class="btn" type="button" id="in-ok" autofocus>Понятно</button></div>`).querySelector("#in-ok").onclick = closeSheet;
 }
+const NEWS_ID = "link-fill-1";
+function seenNews() {
+  try { const was = localStorage.getItem("news") === NEWS_ID; localStorage.setItem("news", NEWS_ID); return was; } catch { return true; }
+}
+function openNews() {
+  openSheet(`
+    <div class="sheet-head"><h2>✨ Новое: хотелка по ссылке</h2><button class="x" type="button" aria-label="Закрыть">×</button></div>
+    <div class="how"><ol>
+      <li>Нажми <b>«+»</b> внизу справа.</li>
+      <li>В самое верхнее поле <b>«Ссылка»</b> вставь ссылку на товар из интернет-магазина (например, Wildberries) или на место.</li>
+      <li>Нажми <b>«✨ Заполнить»</b>. Фото, название, описание и цена подставятся сами.</li>
+      <li>Проверь, поправь, если нужно, и нажми <b>«Добавить»</b>.</li></ol></div>
+    <p style="margin:0;color:var(--muted)">Если какой-то сайт не даст прочитать страницу, заполни поля вручную. А нажатие на фото в хотелке открывает его крупно.</p>
+    <div class="actions"><button class="btn" type="button" id="nw-add">Попробовать</button><button class="btn ghost" type="button" id="nw-ok">Понятно</button></div>`);
+  document.getElementById("nw-ok").onclick = closeSheet;
+  document.getElementById("nw-add").onclick = () => { closeSheet(); openWishForm(); setTimeout(() => document.getElementById("wf-link")?.focus(), 60); };
+}
 function openTour() {
   const steps = [
     ["Привет, " + (S.profile?.name || "друг") + "!", "Здесь хранятся хотелки: подарки, куда сходить покушать, где погулять и на какие мероприятия хочется."],
-    ["Добавь свою хотелку", "Нажми «+». Добавь фото, название, цену и ссылку. Можно выбрать, кто из друзей её увидит."],
+    ["Добавь свою хотелку", "Нажми «+» и просто вставь ссылку на товар или место, потом нажми «✨ Заполнить». Фото, название, описание и цену сайт подставит сам. Можно и вручную. А ещё можно выбрать, кто из друзей её увидит."],
     ["Позови близких", "Нажми «Друзья» и отправь свою ссылку. Когда друг её откроет и зарегистрируется, вы будете видеть хотелки друг друга."],
     ["Смотри хотелки друзей", "Сверху переключайся между людьми, внизу выбирай раздел и бюджет. Подарили подарок или сходили вместе? Нажми «Куплено» или «Сходили»."],
   ];
