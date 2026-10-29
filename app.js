@@ -177,6 +177,7 @@ function renderMain() {
     </div>
   </div></header>
   <main class="wrap">
+    ${installHint() ? `<div class="install-hint" id="ih"><span>📱 Поставь «Хотелки» на экран телефона, как приложение</span><button class="btn small" type="button" id="ih-how">Как?</button><button class="x" type="button" id="ih-x" aria-label="Скрыть">×</button></div>` : ""}
     <nav class="people" id="people" aria-label="Чьи хотелки">
       ${ids.map(id => `<button type="button" class="person${id === S.sel ? " on" : ""}" data-p="${id}"><span class="av" style="background:${avColor(id)}">${esc(initial(nameOf(id)))}</span>${id === S.me.id ? "Мои" : esc(nameOf(id))}</button>`).join("")}
       <button type="button" class="person add" id="p-add">+ Добавить друга</button>
@@ -193,6 +194,8 @@ function renderMain() {
   document.getElementById("p-add").onclick = openFriends;
   document.getElementById("b-help").onclick = openTour;
   document.getElementById("b-me").onclick = openProfile;
+  document.getElementById("ih-how")?.addEventListener("click", openInstall);
+  document.getElementById("ih-x")?.addEventListener("click", () => { try { localStorage.setItem("ihHidden", "1"); } catch {} document.getElementById("ih").remove(); });
   document.getElementById("fab").onclick = () => openWishForm();
   document.getElementById("people").onclick = e => {
     const b = e.target.closest("[data-p]"); if (!b || b.dataset.p === S.sel) return;
@@ -478,6 +481,7 @@ function openProfile() {
     <form class="field" id="pf"><label for="pf-name">Как тебя подписать</label>
       <div style="display:flex;gap:8px"><input id="pf-name" type="text" maxlength="40" value="${esc(S.profile.name)}"><button class="btn small" type="submit">Сохранить</button></div></form>
     <small style="color:var(--muted)">Почта: ${esc(S.me.email || "")}</small>
+    <button class="btn ghost" type="button" id="pf-install">📱 Как поставить на экран телефона</button>
     <button class="btn ghost" type="button" id="pf-tour">Показать подсказки</button>
     <button class="btn danger" type="button" id="pf-out">Выйти</button>`);
   sh.querySelector("#pf").onsubmit = async e => {
@@ -488,10 +492,38 @@ function openProfile() {
     S.profile.name = name; closeSheet(); renderMain(); renderGrid(); toast("Имя сохранено");
   };
   sh.querySelector("#pf-tour").onclick = openTour;
+  sh.querySelector("#pf-install").onclick = openInstall;
   sh.querySelector("#pf-out").onclick = async () => { closeSheet(); await sb.auth.signOut(); };
 }
 
 // tour
+function isStandalone() { return matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; }
+function installHint() {
+  if (isStandalone() || !matchMedia("(max-width: 900px)").matches) return false;
+  try { return !localStorage.getItem("ihHidden"); } catch { return true; }
+}
+function openInstall() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const notSafari = ios && /CriOS|FxiOS|YaBrowser|EdgiOS|OPiOS/.test(ua);
+  const iphone = `<div class="how"><h3>iPhone</h3>
+    ${notSafari ? `<p class="warn">Сначала открой этот сайт в <b>Safari</b>: из других браузеров на iPhone так не получится.</p>` : ""}
+    <ol><li>Открой сайт в <b>Safari</b>.</li>
+      <li>Нажми кнопку <b>«Поделиться»</b> внизу экрана (квадрат со стрелкой вверх).</li>
+      <li>Пролистай вниз и выбери <b>«На экран „Домой“»</b>.</li>
+      <li>Нажми <b>«Добавить»</b>. На экране появится иконка с сердечком.</li></ol></div>`;
+  const android = `<div class="how"><h3>Android</h3>
+    <ol><li>Открой сайт в <b>Chrome</b>.</li>
+      <li>Нажми <b>⋮</b> справа вверху.</li>
+      <li>Выбери <b>«Добавить на главный экран»</b> или <b>«Установить приложение»</b>.</li>
+      <li>Нажми <b>«Добавить»</b>.</li></ol></div>`;
+  openSheet(`
+    <div class="sheet-head"><h2>Хотелки как приложение</h2><button class="x" type="button" aria-label="Закрыть">×</button></div>
+    ${isStandalone() ? `<p class="ok">Уже готово: сайт открыт с иконки на экране телефона.</p>` : ""}
+    <p style="margin:0">Иконка откроет сайт на весь экран, без адресной строки, как обычное приложение. Ничего скачивать не нужно.</p>
+    ${ios ? iphone + android : android + iphone}
+    <div class="actions"><button class="btn" type="button" id="in-ok" autofocus>Понятно</button></div>`).querySelector("#in-ok").onclick = closeSheet;
+}
 function openTour() {
   const steps = [
     ["Привет, " + (S.profile?.name || "друг") + "!", "Здесь хранятся хотелки: подарки, куда сходить покушать, где погулять и на какие мероприятия хочется."],
