@@ -149,6 +149,41 @@ textarea{min-height:72px;resize:vertical}
 .lightbox{position:fixed;inset:0;z-index:80;background:rgba(20,6,12,.92);display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));cursor:zoom-out}
 .lightbox img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px}
 .lightbox .x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;background:rgba(255,255,255,.9)}
+.gift-intro{position:fixed;inset:0;z-index:70;background:radial-gradient(circle at 50% 40%,#fff 0,var(--bg) 45%,var(--soft) 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px;overflow:hidden}
+.gi-scene{all:unset;cursor:pointer;position:relative;width:240px;height:240px;perspective:700px;display:grid;place-items:center;-webkit-tap-highlight-color:transparent}
+.gi-scene:focus-visible{outline:3px solid var(--accent2);outline-offset:6px;border-radius:24px}
+.gi-box{--s:130px;position:relative;width:var(--s);height:var(--s);transform-style:preserve-3d;transform:rotateX(-22deg) rotateY(-35deg);transition:transform .6s}
+.gi-body,.gi-lid{position:absolute;inset:0;transform-style:preserve-3d}
+.gi-box .f{position:absolute;inset:0;display:block;background:linear-gradient(90deg,transparent 42%,#fff2c6 42%,#ffe28a 58%,transparent 58%),linear-gradient(135deg,var(--accent2),var(--accent));border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.gi-body .front{transform:translateZ(calc(var(--s)/2))}
+.gi-body .back{transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
+.gi-body .left{transform:rotateY(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.85)}
+.gi-body .right{transform:rotateY(90deg) translateZ(calc(var(--s)/2));filter:brightness(.92)}
+.gi-body .bottom{transform:rotateX(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.6)}
+.gi-lid{inset:-8px;height:34px;top:-14px;transition:transform .8s cubic-bezier(.3,1.4,.5,1),opacity .8s}
+.gi-lid .f{background:linear-gradient(90deg,transparent 42%,#fff2c6 42%,#ffe28a 58%,transparent 58%),linear-gradient(135deg,#ee7896,var(--accent2))}
+.gi-lid .top{height:calc(var(--s) + 16px);transform:translateZ(calc(-1*var(--s)/2 - 8px)) rotateX(90deg);transform-origin:top;background:linear-gradient(90deg,transparent 42%,#ffe28a 42%,#ffd45c 58%,transparent 58%),linear-gradient(0deg,transparent 42%,#ffe28a 42%,#ffd45c 58%,transparent 58%),linear-gradient(135deg,#f38aa4,var(--accent2))}
+.gi-lid .front{height:34px;transform:translateZ(calc(var(--s)/2 + 8px))}
+.gi-lid .back{height:34px;transform:rotateY(180deg) translateZ(calc(var(--s)/2 + 8px))}
+.gi-lid .left{height:34px;transform:rotateY(-90deg) translateZ(calc(var(--s)/2 + 8px));filter:brightness(.85)}
+.gi-lid .right{height:34px;transform:rotateY(90deg) translateZ(calc(var(--s)/2 + 8px));filter:brightness(.92)}
+.gi-bow{position:absolute;left:50%;top:0;font-size:54px;line-height:1;transform:translate(-50%,-80%) translateZ(calc(var(--s)/2)) rotateY(35deg)}
+.gi-burst{position:absolute;left:50%;top:45%;pointer-events:none}
+.gi-burst b{position:absolute;font-size:22px;opacity:0;transform:translate(-50%,-50%)}
+.gi-tap{margin:0;font-weight:800;font-size:18px;color:var(--accent);text-align:center}
+.gi-card{background:var(--card);border-radius:24px;box-shadow:0 18px 50px rgba(194,24,91,.22);padding:22px 22px 18px;max-width:420px;width:calc(100% - 32px);display:flex;flex-direction:column;gap:8px;font-size:16px;line-height:1.5;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);max-height:calc(100vh - 48px);overflow:auto}
+.gi-card p{margin:0}
+.gi-hi{font-size:22px;font-weight:900;color:var(--accent)}
+.gi-sign{font-weight:800;text-align:right;color:var(--accent);margin-bottom:6px!important}
+.gift-intro.open .gi-tap{opacity:0;transition:opacity .3s}
+.gift-intro.open .gi-lid{transform:translateY(-150px) rotateX(-35deg) rotateZ(18deg);opacity:0}
+.gift-intro.open .gi-box{transform:rotateX(-22deg) rotateY(-35deg) translateY(40px) scale(.85);opacity:.0;transition:transform .7s .35s,opacity .4s .55s}
+.gift-intro.open .gi-burst b{animation:gi-pop 1.1s var(--d) ease-out forwards}
+@keyframes gi-pop{0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translateY(0) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--a)) translateY(calc(-1*var(--r))) scale(1.1)}}
+.gi-card:not([hidden]){animation:gi-card .55s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes gi-card{from{opacity:0;transform:translate(-50%,-30%) scale(.6)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@media (prefers-reduced-motion:no-preference){.gift-intro:not(.open) .gi-box{animation:gi-spin 7s ease-in-out infinite}}
+@keyframes gi-spin{0%,100%{transform:rotateX(-22deg) rotateY(-35deg) translateY(0)}50%{transform:rotateX(-18deg) rotateY(-55deg) translateY(-10px)}}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:700;z-index:60;max-width:calc(100vw - 32px);text-align:center}
 .tour-dots{display:flex;gap:6px;justify-content:center}
 .tour-dots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
@@ -160,6 +195,6 @@ textarea{min-height:72px;resize:vertical}
 <body>
 <div id="app"><div class="loading">Загружаю…</div></div>
 <script src="supabase.js"></script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

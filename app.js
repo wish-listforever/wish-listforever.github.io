@@ -85,7 +85,7 @@ async function loadAll() {
     await loadWishes();
     let pending = null; try { pending = sessionStorage.getItem("pendingAdd"); sessionStorage.removeItem("pendingAdd"); } catch {}
     if (pending && pending.toUpperCase() !== S.profile.code) await addByCode(pending, true);
-    if (S.profile && !S.profile.onboarded) { seenNews(); openTour(); }
+    if (S.profile && !S.profile.onboarded) { seenNews(); openGift(openTour); }
     else if (!seenNews()) openNews();
   } catch (e) {
     $app.innerHTML = `<div class="auth"><div class="auth-box"><div class="logo">Наши хотелки</div><p class="err">${esc(ruError(e))}</p><button class="btn" id="retry">Попробовать снова</button></div></div>`;
@@ -522,6 +522,7 @@ function openProfile() {
     <small style="color:var(--muted)">Почта: ${esc(S.me.email || "")}</small>
     <button class="btn ghost" type="button" id="pf-install">📱 Как поставить на экран телефона</button>
     <button class="btn ghost" type="button" id="pf-news">✨ Как добавить хотелку по ссылке</button>
+    <button class="btn ghost" type="button" id="pf-gift">🎁 Подарок-приветствие</button>
     <button class="btn ghost" type="button" id="pf-tour">Показать подсказки</button>
     <button class="btn danger" type="button" id="pf-out">Выйти</button>`);
   sh.querySelector("#pf").onsubmit = async e => {
@@ -534,6 +535,7 @@ function openProfile() {
   sh.querySelector("#pf-tour").onclick = openTour;
   sh.querySelector("#pf-install").onclick = openInstall;
   sh.querySelector("#pf-news").onclick = openNews;
+  sh.querySelector("#pf-gift").onclick = () => { closeSheet(); openGift(); };
   sh.querySelector("#pf-out").onclick = async () => { closeSheet(); await sb.auth.signOut(); };
 }
 
@@ -581,6 +583,35 @@ function openNews() {
     <div class="actions"><button class="btn" type="button" id="nw-add">Попробовать</button><button class="btn ghost" type="button" id="nw-ok">Понятно</button></div>`);
   document.getElementById("nw-ok").onclick = closeSheet;
   document.getElementById("nw-add").onclick = () => { closeSheet(); openWishForm(); setTimeout(() => document.getElementById("wf-link")?.focus(), 60); };
+}
+function openGift(then) {
+  const el = document.createElement("div");
+  el.className = "gift-intro"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "Подарок от Яси");
+  const faces = ["front", "back", "left", "right", "bottom"].map(f => `<i class="f ${f}"></i>`).join("");
+  const hearts = Array.from({ length: 18 }, (_, i) => `<b style="--a:${i * 20}deg;--d:${(i % 3) * 0.08}s;--r:${110 + (i % 4) * 40}px">${["💗", "✨", "🎀"][i % 3]}</b>`).join("");
+  el.innerHTML = `
+    <button type="button" class="gi-scene" id="gi-open" aria-label="Открыть подарок">
+      <div class="gi-box"><div class="gi-body">${faces}</div><div class="gi-lid"><i class="f top"></i><i class="f front"></i><i class="f back"></i><i class="f left"></i><i class="f right"></i><span class="gi-bow">🎀</span></div></div>
+      <div class="gi-burst" aria-hidden="true">${hearts}</div>
+    </button>
+    <p class="gi-tap">Тебе подарок! Нажми, чтобы открыть</p>
+    <div class="gi-card" hidden>
+      <p class="gi-hi">Привет! Это Яся 💝</p>
+      <p>Я сделала этот сайт, чтобы собрать все наши хотелки в одном месте.</p>
+      <p>Теперь мы всегда знаем, о чём мечтает близкий человек, куда ему хочется сходить, что попробовать и чем он увлекается. И больше никаких «не знаю, что тебе подарить»!</p>
+      <p>Добавляй свои хотелки, зови друзей, и пусть мечты сбываются ✨</p>
+      <p class="gi-sign">С любовью, Яся</p>
+      <button class="btn" type="button" id="gi-go">Начать</button>
+    </div>`;
+  document.body.appendChild(el);
+  const btn = el.querySelector("#gi-open");
+
+  btn.onclick = () => {
+    if (el.classList.contains("open")) return;
+    el.classList.add("open");
+    setTimeout(() => { el.querySelector(".gi-card").hidden = false; el.querySelector("#gi-go").focus(); }, 750);
+  };
+  el.querySelector("#gi-go").onclick = () => { el.remove(); then?.(); };
 }
 function openTour() {
   const steps = [
