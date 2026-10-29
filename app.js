@@ -80,7 +80,7 @@ async function loadAll() {
     if (error) throw error;
     S.profile = prof;
     await loadFriends();
-    S.sel = S.sel && (S.sel === S.me.id || friendIds().includes(S.sel)) ? S.sel : S.me.id;
+    S.sel = S.sel && (S.sel === "all" || S.sel === S.me.id || friendIds().includes(S.sel)) ? S.sel : "all";
     renderMain();
     await loadWishes();
     let pending = null; try { pending = sessionStorage.getItem("pendingAdd"); sessionStorage.removeItem("pendingAdd"); } catch {}
@@ -104,13 +104,16 @@ async function loadFriends() {
 async function loadWishes() {
   const who = S.sel;
   S.loadingWishes = true; renderGrid();
-  const { data, error } = await sb.from("wishes").select("*").eq("owner", who).order("created_at", { ascending: false });
+  let q = sb.from("wishes").select("*");
+  if (who !== "all") q = q.eq("owner", who);
+  const { data, error } = await q.order("created_at", { ascending: false });
   if (who !== S.sel) return;
   S.loadingWishes = false;
   if (error) { toast(ruError(error)); S.wishes = []; }
   else S.wishes = data || [];
-  if (who === S.me.id && S.wishes.some(w => w.visibility === "some")) {
-    const ids = S.wishes.filter(w => w.visibility === "some").map(w => w.id);
+  const own = S.wishes.filter(w => w.owner === S.me.id && w.visibility === "some");
+  if (own.length) {
+    const ids = own.map(w => w.id);
     const { data: v } = await sb.from("wish_viewers").select("wish_id,user_id").in("wish_id", ids);
     const by = {}; (v || []).forEach(r => (by[r.wish_id] ||= []).push(r.user_id));
     S.wishes.forEach(w => { w._viewers = by[w.id] || []; });
@@ -178,6 +181,7 @@ function renderMain() {
   </div></header>
   <main class="wrap">
     <nav class="people" id="people" aria-label="Чьи хотелки">
+      <button type="button" class="person${S.sel === "all" ? " on" : ""}" data-p="all"><span class="av" style="background:var(--accent2)">★</span>Все хотелки</button>
       ${ids.map(id => `<button type="button" class="person${id === S.sel ? " on" : ""}" data-p="${id}"><span class="av" style="background:${avColor(id)}">${esc(initial(nameOf(id)))}</span>${id === S.me.id ? "Мои" : esc(nameOf(id))}</button>`).join("")}
       <button type="button" class="person add" id="p-add">+ Добавить друга</button>
     </nav>
@@ -211,11 +215,12 @@ function renderMain() {
 
 function renderGrid() {
   const grid = document.getElementById("grid"); if (!grid) return;
+  const all = S.sel === "all";
   const mine = S.sel === S.me.id;
   const c = CAT[S.cat];
-  document.getElementById("fab").hidden = !mine;
+  document.getElementById("fab").hidden = !mine && !all;
   document.getElementById("bud-out").textContent = S.max >= BUDGET_MAX ? "любой" : rub(S.max);
-  document.getElementById("title").textContent = mine ? "Мои хотелки" : "Хотелки: " + nameOf(S.sel);
+  document.getElementById("title").textContent = all ? "Все хотелки" : mine ? "Мои хотелки" : "Хотелки: " + nameOf(S.sel);
   if (S.loadingWishes) { document.getElementById("sub").textContent = ""; grid.innerHTML = `<div class="empty">Загружаю…</div>`; return; }
   const list = S.wishes.filter(w => w.category === S.cat && (S.max >= BUDGET_MAX || w.price == null || w.price <= S.max));
   const inCat = S.wishes.filter(w => w.category === S.cat).length;
@@ -224,6 +229,7 @@ function renderGrid() {
   html += list.map(cardHtml).join("");
   if (!list.length) {
     if (inCat && !list.length) html += `<div class="empty"><b>В этом бюджете ничего нет</b>Сдвинь ползунок бюджета вправо.</div>`;
+    else if (all) html += `<div class="empty"><b>Здесь пока пусто</b>Добавь свою хотелку или позови друзей в «Друзья».</div>`;
     else if (!mine) html += `<div class="empty"><b>Здесь пока пусто</b>${esc(nameOf(S.sel))} ещё ничего не добавил(а) в «${c.tab}».</div>`;
   }
   grid.innerHTML = html;
@@ -231,10 +237,10 @@ function renderGrid() {
 
 function cardHtml(w) {
   const c = CAT[w.category];
-  const lock = S.sel === S.me.id && w.visibility === "some" ? `<span class="lock">видят: ${(w._viewers || []).length}</span>` : "";
+  const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">видят: ${(w._viewers || []).length}</span>` : "";
   return `<article class="card${w.done ? " done" : ""}">
     <button type="button" class="open" data-open="${w.id}">
-      <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
+      <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}${S.sel === "all" ? `<span class="who-tag"><span class="av" style="background:${avColor(w.owner)}">${esc(initial(nameOf(w.owner)))}</span>${w.owner === S.me.id ? "Моё" : esc(nameOf(w.owner))}</span>` : ""}</div>
       <div class="t">${esc(w.title)}</div>
       <div class="d">${esc(w.category === "gift" ? w.description : (w.address || w.description))}</div>
     </button>
@@ -248,7 +254,7 @@ async function onGridClick(e) {
   const d = e.target.closest("[data-done]");
   if (d) return toggleDone(S.wishes.find(w => w.id === d.dataset.done), d);
   const o = e.target.closest("[data-open]");
-  if (o) { const w = S.wishes.find(x => x.id === o.dataset.open); if (!w) return; S.sel === S.me.id ? openWishForm(w) : openDetail(w); }
+  if (o) { const w = S.wishes.find(x => x.id === o.dataset.open); if (!w) return; w.owner === S.me.id ? openWishForm(w) : openDetail(w); }
 }
 
 async function toggleDone(w, btn) {
@@ -463,7 +469,7 @@ function openFriends() {
       if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Точно удалить?"; return; }
       const { error } = await sb.from("friendships").delete().eq("id", del.dataset.del);
       if (error) return toast(ruError(error));
-      toast("Удалено из друзей"); await loadFriends(); if (!friendIds().includes(S.sel)) S.sel = S.me.id; renderMain(); loadWishes(); openFriends();
+      toast("Удалено из друзей"); await loadFriends(); if (S.sel !== "all" && !friendIds().includes(S.sel)) S.sel = S.me.id; renderMain(); loadWishes(); openFriends();
     }
   });
 }
