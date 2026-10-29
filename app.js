@@ -21,7 +21,7 @@ const AV_COLORS = ["#c2185b", "#e0567a", "#4f74a8", "#7b5ea7", "#2e7d5b", "#d982
 
 const S = {
   me: null, profile: null, friendships: [], people: {}, sel: null,
-  cat: "gift", max: BUDGET_MAX, wishes: [], loadingWishes: false,
+  cat: "all", max: BUDGET_MAX, wishes: [], loadingWishes: false,
 };
 
 const $app = document.getElementById("app");
@@ -80,7 +80,7 @@ async function loadAll() {
     if (error) throw error;
     S.profile = prof;
     await loadFriends();
-    S.sel = S.sel && (S.sel === "all" || S.sel === S.me.id || friendIds().includes(S.sel)) ? S.sel : "all";
+    S.sel = S.sel && (S.sel === S.me.id || friendIds().includes(S.sel)) ? S.sel : S.me.id;
     renderMain();
     await loadWishes();
     let pending = null; try { pending = sessionStorage.getItem("pendingAdd"); sessionStorage.removeItem("pendingAdd"); } catch {}
@@ -104,9 +104,7 @@ async function loadFriends() {
 async function loadWishes() {
   const who = S.sel;
   S.loadingWishes = true; renderGrid();
-  let q = sb.from("wishes").select("*");
-  if (who !== "all") q = q.eq("owner", who);
-  const { data, error } = await q.order("created_at", { ascending: false });
+  const { data, error } = await sb.from("wishes").select("*").eq("owner", who).order("created_at", { ascending: false });
   if (who !== S.sel) return;
   S.loadingWishes = false;
   if (error) { toast(ruError(error)); S.wishes = []; }
@@ -181,12 +179,11 @@ function renderMain() {
   </div></header>
   <main class="wrap">
     <nav class="people" id="people" aria-label="Чьи хотелки">
-      <button type="button" class="person${S.sel === "all" ? " on" : ""}" data-p="all"><span class="av" style="background:var(--accent2)">★</span>Все хотелки</button>
       ${ids.map(id => `<button type="button" class="person${id === S.sel ? " on" : ""}" data-p="${id}"><span class="av" style="background:${avColor(id)}">${esc(initial(nameOf(id)))}</span>${id === S.me.id ? "Мои" : esc(nameOf(id))}</button>`).join("")}
       <button type="button" class="person add" id="p-add">+ Добавить друга</button>
     </nav>
     <div class="ctrl">
-      <div class="tabs" id="tabs">${CATS.map(c => `<button type="button" class="tab${c.k === S.cat ? " on" : ""}" data-k="${c.k}">${c.tab}</button>`).join("")}</div>
+      <div class="tabs" id="tabs"><button type="button" class="tab${S.cat === "all" ? " on" : ""}" data-k="all">Все</button>${CATS.map(c => `<button type="button" class="tab${c.k === S.cat ? " on" : ""}" data-k="${c.k}">${c.tab}</button>`).join("")}</div>
       <label class="budget" for="bud"><b>Бюджет до</b><input type="range" id="bud" min="500" max="${BUDGET_MAX}" step="500" value="${S.max}"><output id="bud-out"></output></label>
     </div>
     <div class="head"><h1 id="title"></h1><span id="sub"></span></div>
@@ -215,21 +212,20 @@ function renderMain() {
 
 function renderGrid() {
   const grid = document.getElementById("grid"); if (!grid) return;
-  const all = S.sel === "all";
   const mine = S.sel === S.me.id;
-  const c = CAT[S.cat];
-  document.getElementById("fab").hidden = !mine && !all;
+  const c = CAT[S.cat] || { tab: "Все" };
+  document.getElementById("fab").hidden = !mine;
   document.getElementById("bud-out").textContent = S.max >= BUDGET_MAX ? "любой" : rub(S.max);
-  document.getElementById("title").textContent = all ? "Все хотелки" : mine ? "Мои хотелки" : "Хотелки: " + nameOf(S.sel);
+  document.getElementById("title").textContent = mine ? "Мои хотелки" : "Хотелки: " + nameOf(S.sel);
   if (S.loadingWishes) { document.getElementById("sub").textContent = ""; grid.innerHTML = `<div class="empty">Загружаю…</div>`; return; }
-  const list = S.wishes.filter(w => w.category === S.cat && (S.max >= BUDGET_MAX || w.price == null || w.price <= S.max));
-  const inCat = S.wishes.filter(w => w.category === S.cat).length;
+  const inTab = w => S.cat === "all" || w.category === S.cat;
+  const list = S.wishes.filter(w => inTab(w) && (S.max >= BUDGET_MAX || w.price == null || w.price <= S.max));
+  const inCat = S.wishes.filter(inTab).length;
   document.getElementById("sub").textContent = c.tab + " · " + list.length + " шт.";
   let html = mine ? `<button type="button" class="add-card" data-add="1"><big>+</big>Добавить хотелку</button>` : "";
   html += list.map(cardHtml).join("");
   if (!list.length) {
     if (inCat && !list.length) html += `<div class="empty"><b>В этом бюджете ничего нет</b>Сдвинь ползунок бюджета вправо.</div>`;
-    else if (all) html += `<div class="empty"><b>Здесь пока пусто</b>Добавь свою хотелку или позови друзей в «Друзья».</div>`;
     else if (!mine) html += `<div class="empty"><b>Здесь пока пусто</b>${esc(nameOf(S.sel))} ещё ничего не добавил(а) в «${c.tab}».</div>`;
   }
   grid.innerHTML = html;
@@ -240,7 +236,7 @@ function cardHtml(w) {
   const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">видят: ${(w._viewers || []).length}</span>` : "";
   return `<article class="card${w.done ? " done" : ""}">
     <button type="button" class="open" data-open="${w.id}">
-      <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}${S.sel === "all" ? `<span class="who-tag"><span class="av" style="background:${avColor(w.owner)}">${esc(initial(nameOf(w.owner)))}</span>${w.owner === S.me.id ? "Моё" : esc(nameOf(w.owner))}</span>` : ""}</div>
+      <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
       <div class="t">${esc(w.title)}</div>
       <div class="d">${esc(w.category === "gift" ? w.description : (w.address || w.description))}</div>
     </button>
@@ -311,7 +307,7 @@ function openDetail(w) {
 // add / edit own wish
 function openWishForm(w) {
   const editing = !!w;
-  const f = w ? { ...w, _viewers: [...(w._viewers || [])] } : { category: S.cat, title: "", description: "", link: "", address: "", price: null, importance: 2, photo: "", visibility: "all", _viewers: [] };
+  const f = w ? { ...w, _viewers: [...(w._viewers || [])] } : { category: CAT[S.cat] ? S.cat : "gift", title: "", description: "", link: "", address: "", price: null, importance: 2, photo: "", visibility: "all", _viewers: [] };
   const friends = friendIds();
   const sh = openSheet(`
     <div class="sheet-head"><h2>${editing ? "Изменить хотелку" : "Новая хотелка"}</h2><button class="x" type="button" aria-label="Закрыть">×</button></div>
@@ -389,7 +385,7 @@ function openWishForm(w) {
       if (editing) { const { error } = await sb.from("wish_viewers").delete().eq("wish_id", id); if (error) throw error; }
       if (!all && viewers.length) { const { error } = await sb.from("wish_viewers").insert(viewers.map(u => ({ wish_id: id, user_id: u }))); if (error) throw error; }
       closeSheet();
-      S.cat = row.category;
+      if (S.cat !== "all") S.cat = row.category;
       document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x.dataset.k === S.cat));
       toast(editing ? "Сохранено" : "Хотелка добавлена");
       loadWishes();
@@ -469,7 +465,7 @@ function openFriends() {
       if (del.dataset.sure !== "1") { del.dataset.sure = "1"; del.textContent = "Точно удалить?"; return; }
       const { error } = await sb.from("friendships").delete().eq("id", del.dataset.del);
       if (error) return toast(ruError(error));
-      toast("Удалено из друзей"); await loadFriends(); if (S.sel !== "all" && !friendIds().includes(S.sel)) S.sel = S.me.id; renderMain(); loadWishes(); openFriends();
+      toast("Удалено из друзей"); await loadFriends(); if (!friendIds().includes(S.sel)) S.sel = S.me.id; renderMain(); loadWishes(); openFriends();
     }
   });
 }
