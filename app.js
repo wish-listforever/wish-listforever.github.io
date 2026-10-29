@@ -293,6 +293,17 @@ function closeSheet() {
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
 // wish details (someone else's)
+function openPhoto(src) {
+  const lb = document.createElement("div");
+  lb.className = "lightbox"; lb.setAttribute("role", "dialog"); lb.setAttribute("aria-label", "Фото крупно");
+  lb.innerHTML = `<img src="${esc(src)}" alt=""><button class="x" type="button" aria-label="Закрыть">×</button>`;
+  const close = () => { lb.remove(); document.removeEventListener("keydown", onKey, true); };
+  const onKey = e => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+  lb.onclick = close;
+  document.addEventListener("keydown", onKey, true);
+  document.body.appendChild(lb);
+  lb.querySelector(".x").focus();
+}
 function openDetail(w) {
   const c = CAT[w.category];
   const link = safeUrl(w.link);
@@ -308,6 +319,7 @@ function openDetail(w) {
     ${by ? `<p class="meta" style="margin:0">Отметил(а): <b>${esc(by)}</b></p>` : ""}
     <button class="btn" type="button" id="d-done">${w.done ? "Снять отметку «" + c.done + "»" : c.done}</button>`);
   sh.querySelector("#d-done").onclick = async () => { if (await toggleDone(w)) closeSheet(); };
+  sh.querySelector(".detail-photo")?.addEventListener("click", () => openPhoto(w.photo));
 }
 
 // add / edit own wish
@@ -319,6 +331,9 @@ function openWishForm(w) {
     <div class="sheet-head"><h2>${editing ? "Изменить хотелку" : "Новая хотелка"}</h2><button class="x" type="button" aria-label="Закрыть">×</button></div>
     <form id="wf" class="list" novalidate style="gap:14px">
       <div class="field"><span class="lbl">Что это</span><div class="chips" id="wf-cat">${CATS.map(c => `<button type="button" class="chip${c.k === f.category ? " on" : ""}" data-k="${c.k}">${c.one}</button>`).join("")}</div></div>
+      <div class="field"><label for="wf-link">Ссылка</label>
+        <div class="link-row"><input id="wf-link" type="url" inputmode="url" maxlength="1000" value="${esc(f.link)}" placeholder="Вставь ссылку на товар или место"><button type="button" class="btn small" id="wf-fill">✨ Заполнить</button></div>
+        <small id="wf-fill-st" style="color:var(--muted)">Вставь ссылку, и фото, название, описание и цена подставятся сами.</small></div>
       <div class="field"><span class="lbl">Фото</span>
         <div class="photo-pick"><div class="ph" id="wf-ph">${f.photo ? `<img src="${esc(f.photo)}" alt="">` : "нет фото"}</div>
         <div class="list"><label class="btn ghost small" for="wf-file" style="text-align:center">${f.photo ? "Заменить фото" : "Выбрать фото"}</label>
@@ -327,7 +342,6 @@ function openWishForm(w) {
       <div class="field"><label for="wf-title">Название</label><input id="wf-title" type="text" maxlength="120" value="${esc(f.title)}" placeholder="Например, плёночный фотоаппарат" autofocus></div>
       <div class="field"><label for="wf-desc">Описание</label><textarea id="wf-desc" maxlength="1000" placeholder="Размер, цвет, модель, с кем пойти…">${esc(f.description)}</textarea></div>
       <div class="field" id="wf-addr-f"><label for="wf-addr">Адрес</label><input id="wf-addr" type="text" maxlength="300" value="${esc(f.address)}" placeholder="Улица, дом или название места"></div>
-      <div class="field"><label for="wf-link">Ссылка</label><input id="wf-link" type="url" inputmode="url" maxlength="1000" value="${esc(f.link)}" placeholder="Ссылка на товар, сайт или афишу"></div>
       <div class="field"><label for="wf-price" id="wf-price-l">Цена, ₽</label><input id="wf-price" type="number" inputmode="numeric" min="0" step="1" value="${f.price ?? ""}" placeholder="Можно оставить пустым"></div>
       <div class="field"><span class="lbl">Как сильно хочется</span><div class="chips" id="wf-imp">${[3, 2, 1].map(i => `<button type="button" class="chip${i === f.importance ? " on" : ""}" data-i="${i}">${IMP[i]}</button>`).join("")}</div></div>
       <div class="field"><span class="lbl">Кто видит</span>
@@ -355,6 +369,28 @@ function openWishForm(w) {
     catch { q("#wf-ph").textContent = "нет фото"; q("#wf-err").textContent = "Не получилось открыть это фото. Попробуй другое."; }
     e.target.value = "";
   };
+  const fill = async () => {
+    const st = q("#wf-fill-st"), btn = q("#wf-fill");
+    const url = safeUrl(q("#wf-link").value.trim());
+    if (!url) { st.textContent = "Сначала вставь ссылку."; return; }
+    btn.disabled = true; st.style.color = "var(--muted)"; st.textContent = "Смотрю, что по ссылке…";
+    try {
+      const { data, error } = await sb.functions.invoke("parse-link", { body: { url } });
+      if (error || !data || data.error) throw error || new Error(data?.error || "empty");
+      const put = (sel, v) => { const el = q(sel); if (v && !el.value.trim()) el.value = v; };
+      put("#wf-title", data.title); put("#wf-desc", data.description);
+      if (data.price && !q("#wf-price").value.trim()) q("#wf-price").value = data.price;
+      if (data.address && f.category !== "gift") put("#wf-addr", data.address);
+      if (data.photo && !f.photo) { f.photo = data.photo; q("#wf-ph").innerHTML = `<img src="${esc(f.photo)}" alt="">`; q("#wf-nophoto").hidden = false; }
+      st.style.color = "var(--ok)"; st.textContent = "Готово! Проверь и поправь, если нужно.";
+    } catch {
+      st.style.color = "var(--danger)"; st.textContent = "Этот сайт не дал прочитать страницу. Заполни вручную или попробуй другую ссылку.";
+    }
+    btn.disabled = false;
+  };
+  q("#wf-fill").onclick = fill;
+  q("#wf-link").addEventListener("paste", () => setTimeout(() => { if (!q("#wf-title").value.trim()) fill(); }, 50));
+  q("#wf-ph").onclick = () => { if (f.photo) openPhoto(f.photo); };
   q("#wf-nophoto").onclick = () => { f.photo = ""; q("#wf-ph").textContent = "нет фото"; q("#wf-nophoto").hidden = true; };
   if (editing) q("#wf-del").onclick = () => {
     q("#wf-delbox").innerHTML = `<span style="align-self:center;font-weight:700">Точно удалить?</span><button class="btn danger" type="button" id="wf-del2">Да, удалить</button><button class="btn ghost" type="button" id="wf-del0">Нет</button>`;
