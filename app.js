@@ -62,14 +62,15 @@ function ruError(e) {
   if (code) { try { sessionStorage.setItem("pendingAdd", code); } catch {} history.replaceState(null, "", location.pathname); }
 })();
 
+function rememberLogin() { try { localStorage.setItem("hadLogin", "1"); } catch {} }
 async function boot() {
   const { data } = await sb.auth.getSession();
-  if (data.session) { S.me = data.session.user; await loadAll(); }
+  if (data.session) { S.me = data.session.user; rememberLogin(); await loadAll(); }
   else renderAuth();
 }
 sb.auth.onAuthStateChange((ev, session) => {
   if (ev === "SIGNED_OUT") { S.me = null; S.profile = null; renderAuth(); }
-  if (ev === "SIGNED_IN" && session && S.me?.id !== session.user.id) { S.me = session.user; loadAll(); }
+  if (ev === "SIGNED_IN" && session && S.me?.id !== session.user.id) { S.me = session.user; rememberLogin(); loadAll(); }
 });
 
 async function loadAll() {
@@ -119,18 +120,19 @@ async function loadWishes() {
 }
 
 // ---------- auth screen ----------
-function renderAuth(mode = "signup") {
+function knownUser() { try { return !!localStorage.getItem("hadLogin"); } catch { return false; } }
+function renderAuth(mode = knownUser() ? "login" : "signup") {
   $app.innerHTML = `
-  <div class="auth"><form class="auth-box" id="authForm" novalidate>
+  <div class="auth"><form class="auth-box" id="authForm" method="post" action="#" novalidate>
     <div class="logo">Наши хотелки</div>
     <p>Виш-листы для тебя и твоих близких: подарки, куда сходить покушать, погулять и на какие мероприятия.</p>
     <div class="seg" role="tablist">
       <button type="button" id="m-signup" class="${mode === "signup" ? "on" : ""}">Регистрация</button>
       <button type="button" id="m-login" class="${mode === "login" ? "on" : ""}">Вход</button>
     </div>
-    ${mode === "signup" ? `<div class="field"><label for="a-name">Как тебя подписать</label><input id="a-name" type="text" maxlength="40" autocomplete="nickname" placeholder="Например, Яся" required></div>` : ""}
-    <div class="field"><label for="a-email">Почта</label><input id="a-email" type="email" autocomplete="email" inputmode="email" placeholder="you@mail.ru" required></div>
-    <div class="field"><label for="a-pass">Пароль</label><input id="a-pass" type="password" autocomplete="${mode === "signup" ? "new-password" : "current-password"}" minlength="6" placeholder="Не меньше 6 символов" required></div>
+    ${mode === "signup" ? `<div class="field"><label for="a-name">Как тебя подписать</label><input id="a-name" name="name" type="text" maxlength="40" autocomplete="nickname" placeholder="Например, Яся" required></div>` : ""}
+    <div class="field"><label for="a-email">Почта</label><input id="a-email" name="email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@mail.ru" required></div>
+    <div class="field"><label for="a-pass">Пароль</label><input id="a-pass" name="password" type="password" autocomplete="${mode === "signup" ? "new-password" : "current-password"}" minlength="6" placeholder="Не меньше 6 символов" required></div>
     <div class="err" id="a-err" aria-live="polite"></div>
     <button class="btn" type="submit" id="a-go">${mode === "signup" ? "Зарегистрироваться" : "Войти"}</button>
   </form></div>`;
