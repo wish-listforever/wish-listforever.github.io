@@ -49,8 +49,9 @@ main.wrap{display:flex;flex-direction:column;gap:16px;padding-block:16px 96px}
 .tab{border:1px solid var(--line);padding:8px 14px;border-radius:999px;background:var(--card);font-weight:700;font-size:14px}
 .tab.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .budget{display:flex;align-items:center;gap:10px;font-size:14px}
-.budget input{accent-color:var(--accent);width:170px;max-width:46vw}
-.budget output{font-weight:800;color:var(--accent);min-width:86px;font-variant-numeric:tabular-nums}
+.budget label{display:flex;align-items:center;gap:6px;color:var(--muted);font-weight:700}
+.budget input{width:96px;font:inherit;font-size:16px;font-weight:800;color:var(--accent);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-variant-numeric:tabular-nums}
+.budget input:focus{outline:2px solid var(--accent2);outline-offset:1px}
 
 .head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .head h1{margin:0;font-size:22px;font-weight:900;text-wrap:balance}
@@ -138,6 +139,6 @@ textarea{min-height:72px;resize:vertical}
 <body>
 <div id="app"><div class="loading">Загружаю…</div></div>
 <script src="supabase.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=5"></script>
 </body>
 </html>

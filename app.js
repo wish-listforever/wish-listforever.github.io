@@ -16,12 +16,11 @@ const CATS = [
 ];
 const CAT = Object.fromEntries(CATS.map(c => [c.k, c]));
 const IMP = { 3: "очень хочу", 2: "хочу", 1: "было бы неплохо" };
-const BUDGET_MAX = 50000;
 const AV_COLORS = ["#c2185b", "#e0567a", "#4f74a8", "#7b5ea7", "#2e7d5b", "#d9822b", "#00838f"];
 
 const S = {
   me: null, profile: null, friendships: [], people: {}, sel: null,
-  cat: "all", max: BUDGET_MAX, wishes: [], loadingWishes: false,
+  cat: "all", min: null, max: null, wishes: [], loadingWishes: false,
 };
 
 const $app = document.getElementById("app");
@@ -184,7 +183,7 @@ function renderMain() {
     </nav>
     <div class="ctrl">
       <div class="tabs" id="tabs"><button type="button" class="tab${S.cat === "all" ? " on" : ""}" data-k="all">Все</button>${CATS.map(c => `<button type="button" class="tab${c.k === S.cat ? " on" : ""}" data-k="${c.k}">${c.tab}</button>`).join("")}</div>
-      <label class="budget" for="bud"><b>Бюджет до</b><input type="range" id="bud" min="500" max="${BUDGET_MAX}" step="500" value="${S.max}"><output id="bud-out"></output></label>
+      <div class="budget" id="bud"><b>Бюджет</b><label>от<input type="number" inputmode="numeric" min="0" step="100" id="bud-min" placeholder="0" value="${S.min ?? ""}"></label><label>до<input type="number" inputmode="numeric" min="0" step="100" id="bud-max" placeholder="любой" value="${S.max ?? ""}"></label><span>₽</span></div>
     </div>
     <div class="head"><h1 id="title"></h1><span id="sub"></span></div>
     <section class="grid" id="grid" aria-live="polite"></section>
@@ -205,7 +204,10 @@ function renderMain() {
     const b = e.target.closest(".tab"); if (!b) return;
     S.cat = b.dataset.k; document.querySelectorAll(".tab").forEach(x => x.classList.toggle("on", x === b)); renderGrid();
   };
-  document.getElementById("bud").oninput = e => { S.max = +e.target.value; renderGrid(); };
+  document.getElementById("bud").oninput = () => {
+    const num = id => { const v = document.getElementById(id).value.trim(); return v === "" ? null : Math.max(0, +v); };
+    S.min = num("bud-min"); S.max = num("bud-max"); renderGrid();
+  };
   document.getElementById("grid").onclick = onGridClick;
   renderGrid();
 }
@@ -215,17 +217,16 @@ function renderGrid() {
   const mine = S.sel === S.me.id;
   const c = CAT[S.cat] || { tab: "Все" };
   document.getElementById("fab").hidden = !mine;
-  document.getElementById("bud-out").textContent = S.max >= BUDGET_MAX ? "любой" : rub(S.max);
   document.getElementById("title").textContent = mine ? "Мои хотелки" : "Хотелки: " + nameOf(S.sel);
   if (S.loadingWishes) { document.getElementById("sub").textContent = ""; grid.innerHTML = `<div class="empty">Загружаю…</div>`; return; }
   const inTab = w => S.cat === "all" || w.category === S.cat;
-  const list = S.wishes.filter(w => inTab(w) && (S.max >= BUDGET_MAX || w.price == null || w.price <= S.max));
+  const list = S.wishes.filter(w => inTab(w) && (w.price == null || ((S.min == null || w.price >= S.min) && (S.max == null || w.price <= S.max))));
   const inCat = S.wishes.filter(inTab).length;
   document.getElementById("sub").textContent = c.tab + " · " + list.length + " шт.";
   let html = mine ? `<button type="button" class="add-card" data-add="1"><big>+</big>Добавить хотелку</button>` : "";
   html += list.map(cardHtml).join("");
   if (!list.length) {
-    if (inCat && !list.length) html += `<div class="empty"><b>В этом бюджете ничего нет</b>Сдвинь ползунок бюджета вправо.</div>`;
+    if (inCat && !list.length) html += `<div class="empty"><b>В этом бюджете ничего нет</b>Поменяй суммы в бюджете.</div>`;
     else if (!mine) html += `<div class="empty"><b>Здесь пока пусто</b>${esc(nameOf(S.sel))} ещё ничего не добавил(а) в «${c.tab}».</div>`;
   }
   grid.innerHTML = html;
