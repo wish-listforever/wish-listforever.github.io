@@ -240,7 +240,8 @@ function renderGrid() {
 
 function cardHtml(w) {
   const c = CAT[w.category];
-  const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">видят: ${(w._viewers || []).length}</span>` : "";
+  const nv = (w._viewers || []).length;
+  const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">${nv ? "видят: " + nv : "🔒 только я"}</span>` : "";
   return `<article class="card${w.done ? " done" : ""}">
     <button type="button" class="open" data-open="${w.id}">
       <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
@@ -328,6 +329,7 @@ function openWishForm(w) {
   const editing = !!w;
   const f = w ? { ...w, _viewers: [...(w._viewers || [])] } : { category: CAT[S.cat] ? S.cat : "gift", title: "", description: "", link: "", address: "", price: null, importance: 2, photo: "", visibility: "all", _viewers: [] };
   const friends = friendIds();
+  let vis = f.visibility === "all" ? "all" : f._viewers.length ? "some" : "me";
   const sh = openSheet(`
     <div class="sheet-head"><h2>${editing ? "Изменить хотелку" : "Новая хотелка"}</h2><button class="x" type="button" aria-label="Закрыть">×</button></div>
     <form id="wf" class="list" novalidate style="gap:14px">
@@ -346,9 +348,9 @@ function openWishForm(w) {
       <div class="field"><label for="wf-price" id="wf-price-l">Цена, ₽</label><input id="wf-price" type="number" inputmode="numeric" min="0" step="1" value="${f.price ?? ""}" placeholder="Можно оставить пустым"></div>
       <div class="field"><span class="lbl">Как сильно хочется</span><div class="chips" id="wf-imp">${[3, 2, 1].map(i => `<button type="button" class="chip${i === f.importance ? " on" : ""}" data-i="${i}">${IMP[i]}</button>`).join("")}</div></div>
       <div class="field"><span class="lbl">Кто видит</span>
-        ${friends.length ? `<label class="check"><input type="checkbox" id="wf-all" ${f.visibility === "all" ? "checked" : ""}>Все друзья</label>
-        <div class="list" id="wf-who" style="padding-left:6px" ${f.visibility === "all" ? "hidden" : ""}>${friends.map(id => `<label class="check"><input type="checkbox" value="${id}" ${f._viewers.includes(id) ? "checked" : ""}><span class="av" style="background:${avColor(id)};width:24px;height:24px;font-size:11px">${esc(initial(nameOf(id)))}</span>${esc(nameOf(id))}</label>`).join("")}</div>`
-        : `<small>Пока видишь только ты. Когда добавишь друзей, здесь можно будет выбрать, кому показывать.</small>`}
+        <div class="chips" id="wf-vis">${[["all", "👥 Все друзья"], ["some", "✅ Выбрать"], ["me", "🔒 Только я"]].filter(([k]) => friends.length || k !== "some").map(([k, t]) => `<button type="button" class="chip${k === vis ? " on" : ""}" data-v="${k}">${t}</button>`).join("")}</div>
+        ${friends.length ? `<div class="list" id="wf-who" style="padding-left:6px" ${vis === "some" ? "" : "hidden"}>${friends.map(id => `<label class="check"><input type="checkbox" value="${id}" ${f._viewers.includes(id) ? "checked" : ""}><span class="av" style="background:${avColor(id)};width:24px;height:24px;font-size:11px">${esc(initial(nameOf(id)))}</span>${esc(nameOf(id))}</label>`).join("")}</div>`
+        : ""}
       </div>
       <div class="err" id="wf-err" aria-live="polite"></div>
       <div class="actions"><button class="btn" type="submit" id="wf-save">${editing ? "Сохранить" : "Добавить"}</button></div>
@@ -362,7 +364,11 @@ function openWishForm(w) {
   syncCat();
   q("#wf-cat").onclick = e => { const b = e.target.closest("[data-k]"); if (!b) return; f.category = b.dataset.k; q("#wf-cat").querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); syncCat(); };
   q("#wf-imp").onclick = e => { const b = e.target.closest("[data-i]"); if (!b) return; f.importance = +b.dataset.i; q("#wf-imp").querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b)); };
-  q("#wf-all")?.addEventListener("change", e => { q("#wf-who").hidden = e.target.checked; });
+  q("#wf-vis").onclick = e => {
+    const b = e.target.closest("[data-v]"); if (!b) return; vis = b.dataset.v;
+    q("#wf-vis").querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x === b));
+    if (q("#wf-who")) q("#wf-who").hidden = vis !== "some";
+  };
   q("#wf-file").onchange = async e => {
     const file = e.target.files[0]; if (!file) return;
     q("#wf-ph").textContent = "…";
@@ -413,8 +419,8 @@ function openWishForm(w) {
     const linkRaw = q("#wf-link").value.trim();
     const link = linkRaw ? safeUrl(linkRaw) : "";
     if (linkRaw && !link) { err.textContent = "Ссылка выглядит странно. Скопируй её из адресной строки браузера."; return; }
-    const all = q("#wf-all") ? q("#wf-all").checked : true;
-    const viewers = all ? [] : [...q("#wf-who").querySelectorAll("input:checked")].map(i => i.value);
+    const all = vis === "all";
+    const viewers = vis === "some" && q("#wf-who") ? [...q("#wf-who").querySelectorAll("input:checked")].map(i => i.value) : [];
     const row = {
       category: f.category, title, description: q("#wf-desc").value.trim(), link,
       address: f.category === "gift" ? "" : q("#wf-addr").value.trim(),
