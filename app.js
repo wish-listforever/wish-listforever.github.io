@@ -186,7 +186,7 @@ function renderMain() {
       <button type="button" class="person add" id="p-add">+ Добавить друга</button>
     </nav>
     <div class="ctrl">
-      <div class="tabs" id="tabs"><button type="button" class="tab${S.cat === "all" ? " on" : ""}" data-k="all">Все</button>${CATS.map(c => `<button type="button" class="tab${c.k === S.cat ? " on" : ""}" data-k="${c.k}">${c.tab}</button>`).join("")}</div>
+      <div class="tabs" id="tabs"><button type="button" class="tab all${S.cat === "all" ? " on" : ""}" data-k="all">Все</button>${CATS.map(c => `<button type="button" class="tab${c.k === S.cat ? " on" : ""}" data-k="${c.k}">${c.tab}</button>`).join("")}</div>
       <div class="budget" id="bud"><b>Бюджет</b><label>от<input type="number" inputmode="numeric" min="0" step="100" id="bud-min" placeholder="0" value="${S.min ?? ""}"></label><label>до<input type="number" inputmode="numeric" min="0" step="100" id="bud-max" placeholder="любой" value="${S.max ?? ""}"></label><span>₽</span></div>
     </div>
     <div class="head"><h1 id="title"></h1><span id="sub"></span></div>

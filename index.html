@@ -54,6 +54,8 @@ main.wrap{display:flex;flex-direction:column;gap:16px;padding-block:16px 96px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}
 .tab{border:1px solid var(--line);padding:8px 14px;border-radius:999px;background:var(--card);font-weight:700;font-size:14px}
 .tab.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.tab.all{background:var(--soft);color:var(--accent);border-color:var(--soft)}
+.tab.all.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .budget{display:flex;align-items:center;gap:10px;font-size:14px}
 .budget label{display:flex;align-items:center;gap:6px;color:var(--muted);font-weight:700}
 .budget input{width:96px;font:inherit;font-size:16px;font-weight:800;color:var(--accent);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-variant-numeric:tabular-nums}
@@ -195,6 +197,6 @@ textarea{min-height:72px;resize:vertical}
 <body>
 <div id="app"><div class="loading">Загружаю…</div></div>
 <script src="supabase.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=11"></script>
 </body>
 </html>
