@@ -244,7 +244,7 @@ function cardHtml(w) {
   const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">${nv ? "видят: " + nv : "🔒 только я"}</span>` : "";
   return `<article class="card${w.done ? " done" : ""}">
     <button type="button" class="open" data-open="${w.id}">
-      <div class="ph">${w.photo ? `<img src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
+      <div class="ph">${w.photo ? `<img class="bg" src="${esc(w.photo)}" alt="" aria-hidden="true" loading="lazy"><img class="fg" src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
       <div class="t">${esc(w.title)}</div>
       <div class="d">${esc(w.category === "gift" ? w.description : (w.address || w.description))}</div>
     </button>
