@@ -106,7 +106,7 @@ async function loadFriends() {
 async function loadWishes() {
   const who = S.sel;
   S.loadingWishes = true; renderGrid();
-  const { data, error } = await sb.from("wishes").select("*").eq("owner", who).order("created_at", { ascending: false });
+  const { data, error } = await sb.from("wishes").select("*").eq("owner", who).order("pinned", { ascending: false }).order("created_at", { ascending: false });
   if (who !== S.sel) return;
   S.loadingWishes = false;
   if (error) { toast(ruError(error)); S.wishes = []; }
@@ -245,7 +245,7 @@ function cardHtml(w) {
   const lock = w.owner === S.me.id && w.visibility === "some" ? `<span class="lock">${nv ? "видят: " + nv : "🔒 только я"}</span>` : "";
   return `<article class="card${w.done ? " done" : ""}">
     <button type="button" class="open" data-open="${w.id}">
-      <div class="ph">${w.photo ? `<img class="bg" src="${esc(w.photo)}" alt="" aria-hidden="true" loading="lazy"><img class="fg" src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${IMP[w.importance] || ""}</span>${lock}</div>
+      <div class="ph">${w.photo ? `<img class="bg" src="${esc(w.photo)}" alt="" aria-hidden="true" loading="lazy"><img class="fg" src="${esc(w.photo)}" alt="" loading="lazy">` : esc(initial(w.title))}<span class="imp">${w.pinned ? "📌 " : ""}${IMP[w.importance] || ""}</span>${lock}</div>
       <div class="t">${esc(w.title)}</div>
       <div class="d">${esc(w.category === "gift" ? w.description : (w.address || w.description))}</div>
     </button>
@@ -353,6 +353,7 @@ function openWishForm(w) {
       <div class="field"><label for="wf-desc">Описание</label><textarea id="wf-desc" maxlength="1000" placeholder="Размер, цвет, модель, с кем пойти…">${esc(f.description)}</textarea></div>
       <div class="field" id="wf-addr-f"><label for="wf-addr">Адрес</label><input id="wf-addr" type="text" maxlength="300" value="${esc(f.address)}" placeholder="Улица, дом или название места"></div>
       <div class="field"><label for="wf-price" id="wf-price-l">Цена, ₽</label><input id="wf-price" type="number" inputmode="numeric" min="0" step="1" value="${f.price ?? ""}" placeholder="Можно оставить пустым"></div>
+      <label class="check"><input type="checkbox" id="wf-pin" ${f.pinned ? "checked" : ""}>📌 Закрепить наверху</label>
       <div class="field"><span class="lbl">Как сильно хочется</span><div class="chips" id="wf-imp">${[3, 2, 1].map(i => `<button type="button" class="chip${i === f.importance ? " on" : ""}" data-i="${i}">${IMP[i]}</button>`).join("")}</div></div>
       <div class="field"><span class="lbl">Кто видит</span>
         <div class="chips" id="wf-vis">${[["all", "👥 Все друзья"], ["some", "✅ Выбрать"], ["me", "🔒 Только я"]].filter(([k]) => friends.length || k !== "some").map(([k, t]) => `<button type="button" class="chip${k === vis ? " on" : ""}" data-v="${k}">${t}</button>`).join("")}</div>
@@ -431,7 +432,7 @@ function openWishForm(w) {
     const row = {
       category: f.category, title, description: q("#wf-desc").value.trim(), link,
       address: f.category === "gift" ? "" : q("#wf-addr").value.trim(),
-      price, importance: f.importance, photo: f.photo || "", visibility: all ? "all" : "some",
+      price, importance: f.importance, photo: f.photo || "", visibility: all ? "all" : "some", pinned: q("#wf-pin").checked,
     };
     save.disabled = true;
     try {
@@ -650,7 +651,7 @@ function openTour() {
 }
 
 // Home-screen apps and CDN caches can keep an old page: reload once a newer version is published.
-const APP_V = "15";
+const APP_V = "16";
 function checkVersion() {
   fetch("version.txt?" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(v => {
     v = v.trim();
