@@ -60,6 +60,7 @@ function ruError(e) {
 (function rememberAddCode() {
   const code = new URLSearchParams(location.search).get("add");
   if (code) { try { sessionStorage.setItem("pendingAdd", code); } catch {} history.replaceState(null, "", location.pathname); }
+  else if (location.search) history.replaceState(null, "", location.pathname);
 })();
 
 function rememberLogin() { try { localStorage.setItem("hadLogin", "1"); } catch {} }
@@ -642,6 +643,18 @@ function openTour() {
   draw();
 }
 
+// Home-screen apps and CDN caches can keep an old page: reload once a newer version is published.
+const APP_V = "14";
+function checkVersion() {
+  fetch("version.txt?" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(v => {
+    v = v.trim();
+    if (!v || v === APP_V) return;
+    try { if (sessionStorage.getItem("reloadedFor") === v) return; sessionStorage.setItem("reloadedFor", v); } catch { return; }
+    location.replace(location.pathname + "?v=" + encodeURIComponent(v));
+  }).catch(() => {});
+}
+checkVersion();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkVersion(); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && S.me && !document.getElementById("overlay")) loadFriends().then(() => { renderMain(); loadWishes(); }).catch(() => {}); });
 
 boot();

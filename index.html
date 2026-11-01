@@ -73,7 +73,7 @@ main.wrap{display:flex;flex-direction:column;gap:16px;padding-block:16px 96px}
 .ph{aspect-ratio:1;width:100%;border-radius:12px;display:grid;place-items:center;color:var(--accent);font-size:34px;font-weight:900;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--soft),var(--bg))}
 .ph img{width:100%;height:100%;object-fit:cover;display:block}
 .card .ph img.bg{position:absolute;inset:0;object-fit:cover;filter:blur(16px) saturate(1.15);transform:scale(1.25);opacity:.75}
-.card .ph img.fg{position:relative;z-index:1;object-fit:contain}
+.card .ph img.fg{position:absolute;inset:0;width:100%;height:100%;z-index:1;object-fit:contain}
 .card .imp,.card .lock{z-index:2}
 .imp{position:absolute;left:8px;top:8px;background:var(--card);color:var(--accent);font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px}
 .lock{position:absolute;right:8px;top:8px;background:var(--card);color:var(--muted);font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px}
@@ -200,6 +200,6 @@ textarea{min-height:72px;resize:vertical}
 <body>
 <div id="app"><div class="loading">Загружаю…</div></div>
 <script src="supabase.js"></script>
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
