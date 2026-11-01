@@ -296,6 +296,12 @@ function closeSheet() {
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
 // wish details (someone else's)
+function linkify(text) {
+  return esc(text).replace(/https?:\/\/[^\s<]+/g, m => {
+    const u = safeUrl(m.replace(/&amp;/g, "&"));
+    return u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">${/yandex\.[a-z]+\/maps/.test(u) ? "Открыть на Яндекс Картах" : m}</a>` : m;
+  });
+}
 function openPhoto(src) {
   const lb = document.createElement("div");
   lb.className = "lightbox"; lb.setAttribute("role", "dialog"); lb.setAttribute("aria-label", "Фото крупно");
@@ -316,7 +322,7 @@ function openDetail(w) {
     ${w.photo ? `<img class="detail-photo" src="${esc(w.photo)}" alt="">` : ""}
     <h2 style="margin:0;font-size:22px;word-break:break-word">${esc(w.title)}</h2>
     <div class="meta"><span>Чья: <b>${esc(nameOf(w.owner))}</b></span>${w.price != null ? `<span>Цена: <b>${rub(w.price)}</b></span>` : ""}<span>Важность: <b>${IMP[w.importance]}</b></span></div>
-    ${w.description ? `<p class="desc">${esc(w.description)}</p>` : ""}
+    ${w.description ? `<p class="desc">${linkify(w.description)}</p>` : ""}
     ${w.address ? `<p class="desc"><b>Адрес:</b> ${esc(w.address)} · <a href="https://yandex.ru/maps/?text=${encodeURIComponent(w.address)}" target="_blank" rel="noopener">на карте</a></p>` : ""}
     ${link ? `<a class="btn ghost" style="text-align:center;text-decoration:none" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Открыть ссылку</a>` : ""}
     ${by ? `<p class="meta" style="margin:0">Отметил(а): <b>${esc(by)}</b></p>` : ""}
@@ -644,7 +650,7 @@ function openTour() {
 }
 
 // Home-screen apps and CDN caches can keep an old page: reload once a newer version is published.
-const APP_V = "14";
+const APP_V = "15";
 function checkVersion() {
   fetch("version.txt?" + Date.now(), { cache: "no-store" }).then(r => r.ok ? r.text() : "").then(v => {
     v = v.trim();
